@@ -2,18 +2,26 @@ import importlib
 import ipaddress
 
 
-def get_instance(meta_type: str, option: dict):
+def get_class(meta_type: str):
     """
-    :param option: meta中的option
     :param meta_type: 数据库中field表中meta字段中json字符串中的type值
-    :return: 通过对type字串的解析处理后返回一个类型转换的实例
+    :return: class
     """
     m, _, c = meta_type.rpartition('.')
     cls = getattr(importlib.import_module(m), c)  # 使用反射动态加载
-    obj = cls(option)
-    if isinstance(obj, BaseType):
-        return obj
-    raise TypeError('Wrong Type {}. Not subclass of BaseType.'.format(meta_type))
+    if not issubclass(cls, BaseType):
+        raise TypeError('Wrong Type {}. Not subclass of BaseType.'.format(meta_type))
+    return cls
+
+
+def get_instance(meta_type: str, option: dict):
+    """
+    :param meta_type: 数据库中field表中meta字段中json字符串中的type值
+    :param option: meta中的option
+    :return: 通过对type字串的解析处理后返回一个类型转换的实例
+    """
+    cls = get_class(meta_type)
+    return cls(option)
 
 
 class BaseType:
@@ -53,10 +61,13 @@ class Int(BaseType):
 
 class IP(BaseType):
     """
-    ip地址类型较验
+    ip地址类型及前缀较验
     """
     def stringify(self, value):
-        return str(ipaddress.ip_address(value))
+        val = ipaddress.ip_address(value)
+        if not str(val).startswith(self.prefix):
+            raise ValueError('Must startswith {}'.format(self.prefix))
+        return str(val)
 
     def destringify(self, value):
         return value
