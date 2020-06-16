@@ -13,13 +13,14 @@ def get_class(meta_type: str):
     cls = classes_cache.get(meta_type)
     if cls:
         return cls
+    raise TypeError('Wrong Type {}. Not subclass of BaseType.'.format(meta_type))
 
-    m, _, c = meta_type.rpartition('.')
-    cls = getattr(importlib.import_module(m), c)  # 使用反射动态加载,python中相同的模块多次加载时也只加载一次
-    classes_cache[meta_type] = cls  # 缓存类
-    if not issubclass(cls, BaseType):
-        raise TypeError('Wrong Type {}. Not subclass of BaseType.'.format(meta_type))
-    return cls
+    # m, _, c = meta_type.rpartition('.')
+    # cls = getattr(importlib.import_module(m), c)  # 使用反射动态加载,python中相同的模块多次加载时也只加载一次
+    # classes_cache[meta_type] = cls  # 缓存类
+    # if not issubclass(cls, BaseType):
+    #     raise TypeError('Wrong Type {}. Not subclass of BaseType.'.format(meta_type))
+    # return cls
 
 
 def get_instance(meta_type: str, option: dict):
@@ -32,7 +33,6 @@ def get_instance(meta_type: str, option: dict):
     key = ",".join("{}={}".format(k, v) for k, v in sorted(option.items()))
     key = "{}|{}".format(meta_type, key)
     obj = obj_cache.get(key)
-    print(obj)
     if obj:
         return obj
     cls = get_class(meta_type)
@@ -88,4 +88,19 @@ class IP(BaseType):
 
     def destringify(self, value):
         return value
+
+
+def inject_classes_cache():
+    for k, v in globals().items():
+        if type(v) == type and k != 'BaseType':
+            classes_cache[k] = v      # Int   短名称
+            classes_cache["{}.{}".format(__name__, k)] = v  # cmdb.types.Int  长名称
+    # print(classes_cache)
+
+
+# 此模块被导入时注入较验数据类型的class
+inject_classes_cache()
+
+
+
 
