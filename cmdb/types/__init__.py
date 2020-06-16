@@ -1,14 +1,22 @@
 import importlib
 import ipaddress
 
+classes_cache = {}  # 缓存类
+obj_cache = {}  # 缓存实例对象
+
 
 def get_class(meta_type: str):
     """
     :param meta_type: 数据库中field表中meta字段中json字符串中的type值
     :return: class
     """
+    cls = classes_cache.get(meta_type)
+    if cls:
+        return cls
+
     m, _, c = meta_type.rpartition('.')
-    cls = getattr(importlib.import_module(m), c)  # 使用反射动态加载
+    cls = getattr(importlib.import_module(m), c)  # 使用反射动态加载,python中相同的模块多次加载时也只加载一次
+    classes_cache[meta_type] = cls  # 缓存类
     if not issubclass(cls, BaseType):
         raise TypeError('Wrong Type {}. Not subclass of BaseType.'.format(meta_type))
     return cls
@@ -20,8 +28,17 @@ def get_instance(meta_type: str, option: dict):
     :param option: meta中的option
     :return: 通过对type字串的解析处理后返回一个类型转换的实例
     """
+    # 为了少创建实例对象，这里对实例对象也存放在加速字典中，选择key是关键，要不要创建一个新的实例由meta_type和option两个参数确定，如果不两个参数不变就是相同的一个实例
+    key = ",".join("{}={}".format(k, v) for k, v in sorted(option.items()))
+    key = "{}|{}".format(meta_type, key)
+    obj = obj_cache.get(key)
+    print(obj)
+    if obj:
+        return obj
     cls = get_class(meta_type)
-    return cls(option)
+    obj = cls(option)
+    obj_cache[key] = obj
+    return obj
 
 
 class BaseType:
@@ -71,6 +88,4 @@ class IP(BaseType):
 
     def destringify(self, value):
         return value
-
-
 
