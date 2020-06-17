@@ -23,27 +23,39 @@ def get_class(meta_type: str):
     # return cls
 
 
-def get_instance(meta_type: str, option: dict):
+def get_instance(meta_type: str, option: dict = None):
     """
     :param meta_type: 数据库中field表中meta字段中json字符串中的type值
     :param option: meta中的option
     :return: 通过对type字串的解析处理后返回一个类型转换的实例
     """
-    # 为了少创建实例对象，这里对实例对象也存放在加速字典中，选择key是关键，要不要创建一个新的实例由meta_type和option两个参数确定，如果不两个参数不变就是相同的一个实例
-    key = ",".join("{}={}".format(k, v) for k, v in sorted(option.items()))
-    key = "{}|{}".format(meta_type, key)
-    obj = obj_cache.get(key)
-    if obj:
+    if option is not None:
+        # 为了少创建实例对象，这里对实例对象也存放在加速字典中，选择key是关键，要不要创建一个新的实例由meta_type和option两个参数确定，如果不两个参数不变就是相同的一个实例
+        key = ",".join("{}={}".format(k, v) for k, v in sorted(option.items()))
+        key = "{}|{}".format(meta_type, key)
+        obj = obj_cache.get(key)
+        if obj:
+            return obj
+
+        cls = get_class(meta_type)
+        obj = cls(option)
+        obj_cache[key] = obj
         return obj
-    cls = get_class(meta_type)
-    obj = cls(option)
-    obj_cache[key] = obj
-    return obj
+    else:
+        key = meta_type
+        obj = obj_cache.get(key)
+        if obj:
+            return obj
+
+        cls = get_class(meta_type)
+        obj = cls()
+        obj_cache[key] = obj
+        return obj
 
 
 class BaseType:
     """cmdb字段类型基类"""
-    def __init__(self, option: dict):
+    def __init__(self, option: dict = None):
         self.option = option  # dict
 
     def __getattr__(self, item):
@@ -64,12 +76,14 @@ class Int(BaseType):
     """
     def stringify(self, value):
         val = int(value)
-        _min = self.min  # 能够使用self.min，是因为父类BaseType实现了__getattr__方法
-        _max = self.max
-        if _min and val < _min:
-            raise ValueError('too small')
-        if _max and val > _max:
-            raise ValueError('too big')
+        if self.option is not None:
+            _min = self.min  # 能够使用self.min，是因为父类BaseType实现了__getattr__方法
+            _max = self.max
+            if _min and val < _min:
+                raise ValueError('too small')
+            if _max and val > _max:
+                raise ValueError('too big')
+            return str(val)
         return str(val)
 
     def destringify(self, value):
@@ -82,8 +96,10 @@ class IP(BaseType):
     """
     def stringify(self, value):
         val = ipaddress.ip_address(value)
-        if not str(val).startswith(self.prefix):
-            raise ValueError('Must startswith {}'.format(self.prefix))
+        if self.option is not None:
+            if not str(val).startswith(self.prefix):
+                raise ValueError('Must startswith {}'.format(self.prefix))
+            return str(val)
         return str(val)
 
     def destringify(self, value):
