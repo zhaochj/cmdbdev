@@ -36,7 +36,7 @@ class reference:
 
 class FieldMeta:
     """解析meta字符串"""
-    def __init__(self, meta_str:str):
+    def __init__(self, meta_str: str):
         meta = json.loads(meta_str)
         if isinstance(meta['type'], str):  # 如果是简写的方式
             self.instance = get_instance(meta['type'])
