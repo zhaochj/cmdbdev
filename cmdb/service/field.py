@@ -67,6 +67,18 @@ def _add_field(field: Field):
         logger.error('Failed to add a field {}. Error: {}'.format(field.name, e))
 
 
+def iter_entities(schema_id, path=100):
+    # 分批处理优化函数，类似分页处理的代码
+    page = 1
+    while True:
+        query = session.query(Entity).filter((Entity.schema_id == schema_id) & (Entity.deleted is False))
+        result = query.limit(path).offset(path * (page - 1))
+        if not result:
+            return None
+        yield from result
+        page += 1
+
+
 def add_field(schema_name, field_name, meta):
     """
     在一个表上增加一个字段需要考虑的因素很多：
@@ -117,9 +129,7 @@ def add_field(schema_name, field_name, meta):
         raise TypeError('This field need a default value.')
     else:
         # 为逻辑表所有记录增加字段
-        entities = session.query(Entity).filter((Entity.schema_id == schema.id) & (Entity.deleted is False)).all()
-
-        for entity in entities:
+        for entity in iter_entities(schema.id):
             value = Value()
             value.entity_id = entity.id
             value.field = field  # 通过relationship关系去Field表中找相应的id

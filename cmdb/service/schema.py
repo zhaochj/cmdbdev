@@ -9,13 +9,13 @@ logger = get_logger(__name__, '{}/logs/{}.log'.format(LOG_HOME, __name__))
 def get_schema_by_name(name: str, deleted=False):
     """
     根据表名称查询接口
-    :param name: 表名称
+    :param name: 表名称，唯一键
     :param deleted: 是否删除
     :return: query对象
     """
-    query = session.query(Schema).filter(Schema.name == name.strip())  # 查出所有记录，包括已删除和未删除的
-    if deleted:
-        query = query.filter(Schema.deleted is True)
+    query = session.query(Schema).filter(Schema.name == name.strip())  # 因name是唯一键，只能查出一条数据
+    if not deleted:
+        query = query.filter(Schema.deleted is False)
     return query.first()
 
 
@@ -32,6 +32,7 @@ def add_schema(name: str, desc: str = None):
     session.add(schema)
     try:
         session.commit()
+        logger.info('Add a schema. id:{} name:{}'.format(schema.id, schema.name))
         return schema
     except Exception as e:
         session.rollback()
@@ -51,6 +52,7 @@ def drop_schema(schema_id: int):
             session.add(schema)
             try:
                 session.commit()
+                logger.info('Delete a schema. id:{} name:{}'.format(schema.id, schema.name))
                 return schema
             except Exception as e:
                 session.rollback()
@@ -61,9 +63,9 @@ def drop_schema(schema_id: int):
         logger.error('Failed to drop schema {}. Error: {}'.format(schema_id, e))
 
 
-def list_schema(page: int, size: int, deleted: bool = False):
+def list_schema(page: int, size: int, deleted=False):
     """
-    列表逻辑表，列表正在使用的，即未删除的表，或者列表已删除的表
+    列表逻辑表，列表正在使用的，即未删除的表
     :param page: 第几页
     :param size: 一页显示数据量
     :param deleted: 删除状态
@@ -71,11 +73,10 @@ def list_schema(page: int, size: int, deleted: bool = False):
     """
     query = session.query(Schema)
     if not deleted:
-        query.filter(Schema.deleted is True)
-    else:
         query.filter(Schema.deleted is False)
     try:
         result = paginate(page, size, query)
+        return result
     except Exception as e:
         logger.error('Failed to paginate. Error: {}'.format(e))
 
