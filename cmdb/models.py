@@ -11,11 +11,13 @@ Base = declarative_base()
 
 
 class Schema(Base):
-    """模型表，记录一个个虚拟表的名称"""
+    """模型表，记录一个个虚拟表的名称
+    name：表示虚拟名名称，唯一键
+    """
     __tablename__ = 'schema'
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    name = Column(String(48), nullable=False, comment='生成虚拟表的表名称')
+    name = Column(String(48), nullable=False, unique=True, comment='生成虚拟表的表名称')
     desc = Column(String(128), nullable=True)
     deleted = Column(Boolean, nullable=False, default=False)
 

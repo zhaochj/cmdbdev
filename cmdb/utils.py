@@ -1,7 +1,14 @@
 import logging
+import math
 
 
 def get_logger(mod_name: str, filepath: str):
+    """
+    日志函数
+    :param mod_name: 模块名称
+    :param filepath: 文件路径
+    :return: logger对象
+    """
     logger = logging.getLogger(mod_name)
     logger.setLevel(logging.INFO)
     logger.propagate = False  # 阻止传递给父logger
@@ -11,6 +18,23 @@ def get_logger(mod_name: str, filepath: str):
     handler.setFormatter(formatter)
     logger.addHandler(handler)
     return logger
+
+
+def paginate(page, size, query):
+    """
+    分页函数
+    :param page: 页码
+    :param size: 一页显示数据条数
+    :param query: query对象
+    :return: query对象以及分页信息返回
+    """
+    # 分页信息
+    page = page if page > 0 else 1  # 第几页，前端传递，需要做一次简单验证
+    size = size if 0 < size < 100 else 20  # 前端传递，需要做一次简单验证
+    count = query.count()
+    pages = math.ceil(count / size)  # 总页数
+    result = query.limit(size).offset(size * (page - 1)).all()
+    return result, (page, size, count, pages)  # query对象以及分页信息返回
 
 
 
